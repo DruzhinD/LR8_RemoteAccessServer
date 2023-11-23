@@ -2,7 +2,6 @@
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
-using static System.Console;
 
 namespace Server;
 
@@ -13,15 +12,36 @@ internal class Interpretator
     public StringBuilder answer = new StringBuilder();
 
     //путь к директории файлов для сериализации
-    private static string path = Path.GetFullPath(Directory.GetCurrentDirectory() + @"\..\..\..\" + "university.json");
+    private static string path = Path.GetFullPath(Directory.GetCurrentDirectory() + @"\..\..\..\");
 
     //статическое поле для хранения информации, с которой работают все пользователи
     private static List<Professor> professors = new List<Professor>();
+
+    //список пользователей
+    private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
 
     public string Execute(string messageFromClient)
     {
         string[] command = messageFromClient.Split('|', '_');
         command[0] = command[0].ToLower(); //форматирование ввода в нижнем регистре
+
+        if (users != null)
+        {
+            if (command[0] == "login")
+            {
+                bool result = Autentification(command);
+                if (result == true)
+                {
+                    return "Вход выполнен. Введите команду";
+                }
+                
+            }
+            else
+            {
+                return "Пройдите аутентификацию: введите логин и пароль (не содержащий '_' и '|'). \n" +
+                    "Пример аутентификации: login_Dimon_12345";
+            }
+        }
 
         answer.Clear();
         switch (command[0])
@@ -45,11 +65,13 @@ internal class Interpretator
                 answer.Append(List(command));
                 break;
             case "exit":
-                WriteLine("Выход из программы...");
+                answer.Append("Выход из программы...");
+                //указываем, что пользователь закончил работу.
+                
                 break;
             default:
-                WriteLine("Неизвестная команда. Повторите ввод.");
-                WriteLine("help - для вызова справки.");
+                answer.AppendLine("Неизвестная команда. Повторите ввод.");
+                answer.AppendLine("help - для вызова справки.");
                 break;
         }
         return answer.ToString();
@@ -67,8 +89,7 @@ internal class Interpretator
         { "list", "Вывести список преподавателей. \n (аргументы: id ИЛИ id_'period')" },
         { "del",  "удалить информацию о преподавателе (аргументы: id)"},
         { "ser", "Сериализовать определенное количество преподавателей \n" +
-            "с удалением их из памяти (списка в программе) с использованием json \n" +
-                "ser_json \n"},
+            "с удалением их из памяти (списка в программе) с использованием json"},
         {"deser", "десериализовать информацию о преподавателях" }
     };
 
@@ -79,15 +100,25 @@ internal class Interpretator
         "для сохранения сериализованной части списка в списке преподавателей"
     };
 
-    private static string[] aboutDeserArgs =
-    {
-        "аргументы: 1) тип сериализатора",
-        "2) тип сериализатора_'mod'",
-        "mod необходим для десериализации файла с несуществующими полями (3 задание ЛР№6)"
-    };
     #endregion
 
     #region Методы обработки команд
+    //аутентификация
+    private static bool Autentification(string[] command)
+    {
+        foreach (User user in users)
+        {
+            //возврат true в случае совпадения логина и пароля
+            if (command[1] == user.login && command[2] == user.password)
+            {
+                //указываем, что пользователь находится в системе
+                user.isInSystem = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
     //Вывод доступных команд
     private static string Help(string[] command)
     {
@@ -115,10 +146,9 @@ internal class Interpretator
                 foreach (string arg in aboutSerArgs)
                     returnString.AppendLine($"\t {arg}");
             }
-            else if (command[1] == "deser")
+            else
             {
-                foreach (string arg in aboutDeserArgs)
-                    returnString.AppendLine($"\t {arg}");
+                returnString.AppendLine($"Нет информации о команде");
             }
         }
 
@@ -243,14 +273,9 @@ internal class Interpretator
 
         Regex indexesRegex = new(@"\d{1,3}");
         MatchCollection indexMatches = indexesRegex.Matches(string.Join('_', command));
-        if (indexMatches.Count < 2)
+        if (indexMatches.Count != 2)
         {
-            return string.Format("Недостаточно аргументов. Передано {0} из 2 необходимых.",
-                indexMatches.Count);
-        }
-        else if (indexMatches.Count > 2)
-        {
-            return string.Format("Введено слишком много аргументов. Передано {0} из 2 необходимых.",
+            return string.Format("Передано недостаточно или слишком много аргументов. Передано {0} из 2 необходимых.",
                 indexMatches.Count);
         }
         else
@@ -276,21 +301,16 @@ internal class Interpretator
         {
             return $"Не удалось сериализовать {amount} преподавателей, следующих после {idProf}";
         }
-
-        //выбор сериализатора
-        if (command[1].ToLower() == "json")
-        {
-            SerializeUniversity.SerializeJson(
-                path, professors.GetRange(profListIndex, amount));
-        }
+        //иначе сериализуем
         else
         {
-            return $"Неверно указан сериализатор. {command[1]}, вместо json.";
+            SerializeUniversity.SerializeJson(
+                Path.Combine(path, "university.json"), professors.GetRange(profListIndex, amount));
         }
 
         //проверка на наличие в команде слова save
         //при отсутствии - удаление сериализованных элементов
-        if (command.Length == 5 && command[4].ToLower() != "save")
+        if (command.Length == 4 && command[3].ToLower() != "save")
             professors.RemoveRange(profListIndex, amount);
 
         return "Информация успешно сериализована.";
@@ -303,15 +323,10 @@ internal class Interpretator
     private static string Deserialization(string[] command)
     {
         List<Professor> newProfessors = new();
-        if (command.Length > 3)
-        {
+        if (command.Length == 1)
+            newProfessors = SerializeUniversity.DeserializeJson(Path.Combine(path, "university.json"));
+        else
             return "Неверно указан или отсутствует сериализатор.";
-        }
-        //десериализация json
-        else if (command[1].ToLower() == "json")
-        {
-            newProfessors = SerializeUniversity.DeserializeJson(path);
-        }
 
         if (newProfessors != null)
         {
@@ -319,7 +334,9 @@ internal class Interpretator
             return "Десериализация прошла успешно.";
         }
         else
+        {
             return "Объекты для сериализации отсутствуют.";
+        }
     }
     #endregion
 }
