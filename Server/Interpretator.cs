@@ -1,5 +1,4 @@
-﻿using SerializedCommandInterface;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -25,6 +24,8 @@ internal class Interpretator
         string[] command = messageFromClient.Split('|', '_');
         command[0] = command[0].ToLower(); //форматирование ввода в нижнем регистре
 
+        //бесконечная аутентификация
+        //РЕШЕНИЕ: передавать в метод id клиента users[индекс user'а с указанным id]
         if (users != null)
         {
             if (command[0] == "login")
@@ -33,6 +34,10 @@ internal class Interpretator
                 if (result == true)
                 {
                     return "Вход выполнен. Введите команду";
+                }
+                else
+                {
+                    return "Неверный логин или пароль";
                 }
                 
             }
@@ -64,9 +69,13 @@ internal class Interpretator
             case "list":
                 answer.Append(List(command));
                 break;
+            case "adduser":
+                answer.Append(AddUser(command));
+                break;
             case "exit":
                 answer.Append("Выход из программы...");
-                //указываем, что пользователь закончил работу.
+                //указываем, что клиент закончил работу.
+                //опять же нужнен текущий id клиента
                 
                 break;
             default:
@@ -119,6 +128,26 @@ internal class Interpretator
         return false;
     }
 
+    //Добавить пользователя
+    private static string AddUser(string[] command)
+    {
+        //прерываем функцию, если отстутсвуют логин, пароль или аргументов слишком много
+        if (command.Length != 3)
+        {
+            return $"Количество аргументов отличается от ожидаемого: " +
+                $"введено - {command.Length}, ожидалось - 3";
+        }
+
+        //инициализируем список пользователей если он пуст
+        if (users == null)
+            users = new();
+        //добавляем нового пользователя сначала в поле программы, а затем сериализуем все поле целиком
+        users.Add(new User(command[1], command[2]));
+        User.SerializeJson(Path.Combine(path, "userslist.json"), users);
+        //выводим ответ клиенту
+        return $"Новый пользователь с логином: {command[1]} и паролем {command[2]} успешно добавлен!";
+    }
+
     //Вывод доступных команд
     private static string Help(string[] command)
     {
@@ -160,13 +189,14 @@ internal class Interpretator
     private static string AddProf(string[] command)
     {
         //проверяет соответствие количества аргументов
-        if (command.Length < 5)
+        int n = command.Length;
+        if (command.Length != 5 & command.Length != 6)
         {
-            return ($"Ошибка ввода: недостаточно аргументов " +
-                $"({command.Length} вместо необходимых 5). \n");
+            return $"Ошибка ввода: ожидалось 5/6 аргументов, а получено - {command.Length}";
         }
         else if (command.Length == 5)
         {
+            Professor.counter = ChangeCounter();
             professors.Add(new(command[1], command[2], command[3], command[4]));
         }
         else if (command.Length == 6)
@@ -175,6 +205,7 @@ internal class Interpretator
             DateTime date;
             if (DateTime.TryParse(command[5], out date))
             {
+                Professor.counter = ChangeCounter();
                 professors.Add(new(command[1], command[2], command[3], command[4], date));
             }
             else
@@ -182,12 +213,25 @@ internal class Interpretator
                 return "Ошибка ввода: Неверный формат даты. \n";
             }
         }
-        else if (command.Length > 6)
-        {
-            return ($"Ошибка ввода: аргументов больше, чем необходимо " +
-                $"({command.Length} вместе максимальных 5). \n");
-        }
+
         return "Информация о преподавателе успешно добавлена. \n";
+
+        //функция, возвращающая текущее состояние счетчика в Professor
+        int ChangeCounter()
+        {
+            List<int> idsMassive = new();
+            //добавляем все id из статического списка
+            idsMassive.AddRange(from prof in professors select prof.Id);
+            //добавляем все id из файла для сериализации на случай,
+            //если файл не был сериализован до добавления нового преподавателя
+            idsMassive.AddRange(
+                from prof in SerializeUniversity.DeserializeJson(Path.Combine(path, "university.json")) select prof.Id);
+
+            if (idsMassive.Count != 0)
+                return idsMassive.Max() + 1;
+            else
+                return 0;
+        }
     }
 
     //вывод списка преподавателей
@@ -308,11 +352,12 @@ internal class Interpretator
                 Path.Combine(path, "university.json"), professors.GetRange(profListIndex, amount));
         }
 
+        //возможно следует УДАЛИТЬ
+
         //проверка на наличие в команде слова save
         //при отсутствии - удаление сериализованных элементов
         if (command.Length == 4 && command[3].ToLower() != "save")
             professors.RemoveRange(profListIndex, amount);
-
         return "Информация успешно сериализована.";
     }
 
@@ -335,7 +380,7 @@ internal class Interpretator
         }
         else
         {
-            return "Объекты для сериализации отсутствуют.";
+            return "Объекты для десериализации отсутствуют.";
         }
     }
     #endregion

@@ -2,7 +2,7 @@
 using System.Text.Json;
 using System.Xml.Serialization;
 
-namespace SerializedCommandInterface
+namespace Server
 {
     /// <summary>
     /// Класс для сериализации объектов в списке преподавателей

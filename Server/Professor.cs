@@ -1,11 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 using System.Xml.Serialization;
 
-namespace SerializedCommandInterface
+namespace Server
 {
-    //проблема с id
-    //сериализуется, однако при создании нового преподавателя, id начинается с нуля
-    //а не с того, какой был в json
     public class Professor
     {
         [JsonIgnore]
@@ -50,7 +47,9 @@ namespace SerializedCommandInterface
             }
         }
 
-        public Professor() { }
+        public Professor()
+        {
+        }
 
         //конструктор с вводом всех полей
         public Professor(string lastName, string firstName, string secondName, string subject, DateTime employment)

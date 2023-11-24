@@ -10,7 +10,8 @@ namespace Client
         {
             int port = 2023;
             Console.Write("Введите IP-адрес сервера: ");
-            string address = Console.ReadLine();
+            Console.ReadLine();
+            string address = "127.0.0.1";
             try
             {
                 IPEndPoint ipPoint = new(IPAddress.Parse(address), port);
