@@ -16,10 +16,11 @@ namespace Server
 
         public User() { }
 
-        public User(string login, string password)
+        public User(string login, string password, string root)
         {
             this.login = login;
             this.password = password;
+            this.root = root;
         }
 
         public User(User user)

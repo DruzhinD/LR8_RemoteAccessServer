@@ -1,5 +1,4 @@
 ﻿using System.Text.Json.Serialization;
-using System.Xml.Serialization;
 
 namespace Server
 {
@@ -85,13 +84,5 @@ namespace Server
         {
             return $"{Id,-3} {LastName,-15} {FirstName,-15} {SecondName,-15} {Subject,-25} {Employment,-15:d}";
         }
-    }
-
-    public class University
-    {
-        public University() { }
-
-        [JsonInclude]
-        public List<Professor> professorsList { get; set; } = new();
     }
 }

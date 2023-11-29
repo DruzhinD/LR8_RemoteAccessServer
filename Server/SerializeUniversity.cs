@@ -1,6 +1,5 @@
 ﻿using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Xml.Serialization;
 
 namespace Server
 {
@@ -9,29 +8,6 @@ namespace Server
     /// </summary>
     internal static class SerializeUniversity
     {
-        /// <summary>Сериализация в xml-документ</summary>
-        internal static void SerializeXML(string fileName, List<Professor> professorsList)
-        {
-            University university = new();
-            university.professorsList = professorsList;
-
-            XmlSerializer xml = new XmlSerializer(typeof(University));
-            using (FileStream fs = new FileStream(fileName, FileMode.Create))
-            {
-                xml.Serialize(fs, university);
-            }
-        }
-
-        /// <summary>Десериализация из xml-документа</summary>
-        internal static List<Professor> DeserializeXML(string fileName)
-        {
-            XmlSerializer xml = new XmlSerializer(typeof(University));
-            using (FileStream fs = new FileStream(fileName, FileMode.Open))
-            {
-                University? university = xml.Deserialize(fs) as University;
-                return university.professorsList;
-            }
-        }
 
         /// <summary>Сериализация в json-документ</summary>
         internal static void SerializeJson(string fileName, List<Professor> professorsList)

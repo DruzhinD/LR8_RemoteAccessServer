@@ -19,7 +19,7 @@ internal class Interpretator
     //список пользователей
     private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
 
-    public KeyValuePair<User?, bool> actualUser = new(new User("1", "2"), false);
+    public KeyValuePair<User?, bool> actualUser = new(null, false);
 
     public string Execute(string messageFromClient)
     {
@@ -32,14 +32,10 @@ internal class Interpretator
             {
                 bool result = Autentification(command);
                 if (result == true)
-                {
                     return "Вход выполнен. Введите команду";
-                }
                 else
-                {
                     return "Неверный логин или пароль";
-                }
-                
+
             }
             else
             {
@@ -48,40 +44,34 @@ internal class Interpretator
             }
         }
 
-        answer.Clear();
-        switch (command[0])
+        string answer = string.Empty;
+        if (actualUser.Key.root == "admin")
         {
-            case "help":
-                answer.Append(Help(command));
-                break;
-            case "addprof":
-                answer.Append(AddProf(command));
-                break;
-            case "del":
-                answer.Append(Del(command));
-                break;
-            case "ser":
-                answer.Append(Serializing(command));
-                break;
-            case "deser":
-                answer.Append(Deserialization(command));
-                break;
-            case "list":
-                answer.Append(List(command));
-                break;
-            case "adduser":
-                answer.Append(AddUser(command));
-                break;
-            case "exit":
-                answer.Append("Выход из программы...");
-                //указываем, что клиент закончил работу.
-                //опять же нужнен текущий id клиента
-                
-                break;
-            default:
-                answer.AppendLine("Неизвестная команда. Повторите ввод.");
-                answer.AppendLine("help - для вызова справки.");
-                break;
+            answer = command[0] switch
+            {
+                "help" => Help(command),
+                "addprof" => AddProf(command),
+                "del" => Del(command),
+                "list" => List(command),
+                "ser" => Serializing(command),
+                "deser" => Deserialization(command),
+                "adduser" => AddUser(command),
+                "exit" => "Выход из программы...",
+                _ => "Неизвестная команда. Повторите ввод. help - вызов справки.",
+            };
+
+        }
+        else
+        {
+            answer = command[0] switch
+            {
+                "help" => Help(command),
+                "addprof" => AddProf(command),
+                "del" => Del(command),
+                "list" => List(command),
+                "exit" => "Выход из программы...",
+                _ => "Неизвестная команда. Повторите ввод. help - вызов справки.",
+            };
         }
         return answer.ToString();
     }
@@ -98,6 +88,10 @@ internal class Interpretator
             "Параметры ввода: list_[id] ИЛИ list_[id]_{period}" },
         { "del",  "удалить информацию о преподавателе" +
             "Параметры ввода: del_[id]" },
+    };
+
+    private static Dictionary<string, string> aboutAdminCommands = new()
+    {
         { "ser", "Сериализовать определенное количество преподавателей \n" +
             "Параметры ввода: ser_[id преподавателя]_[кол-во преподавателей]"},
         {"deser", "десериализовать информацию о преподавателях" },
@@ -127,24 +121,24 @@ internal class Interpretator
     private static string AddUser(string[] command)
     {
         //прерываем функцию, если отстутсвуют логин, пароль или аргументов слишком много
-        if (command.Length != 3)
+        if (command.Length != 4)
         {
             return $"Количество аргументов отличается от ожидаемого: " +
-                $"введено - {command.Length}, ожидалось - 3";
+                $"введено - {command.Length}, ожидалось - 4";
         }
 
         //инициализируем список пользователей если он пуст
         if (users == null)
             users = new();
         //добавляем нового пользователя сначала в поле программы, а затем сериализуем все поле целиком
-        users.Add(new User(command[1], command[2]));
+        users.Add(new User(command[1], command[2], command[3]));
         User.SerializeJson(Path.Combine(path, "userslist.json"), users);
         //выводим ответ клиенту
         return $"Новый пользователь с логином: {command[1]} и паролем {command[2]} успешно добавлен!";
     }
 
     //Вывод доступных команд
-    private static string Help(string[] command)
+    private string Help(string[] command)
     {
         //возвращаемая строка
         StringBuilder returnString = new();
@@ -154,18 +148,19 @@ internal class Interpretator
         {
             returnString.AppendLine("Доступные команды:");
             foreach (KeyValuePair<string, string> com in aboutCommands)
-            {
                 returnString.AppendLine($"\t{com.Key}: {com.Value}");
+
+            if (actualUser.Key?.root == "admin")
+            {
+                foreach (KeyValuePair<string, string> com in aboutAdminCommands)
+                    returnString.AppendLine($"\t{com.Key}: {com.Value}");
             }
-            returnString.AppendLine("Примечание: " +
-                "\n 1)команды с аргументами вводятся через _ или |" +
-                "\n 2)аргументы в апострофах ('') вводятся именно таким образом.");
         }
         //вывод более подробной информации об определенной команде
         else if (command.Length == 2 && aboutCommands.ContainsKey(command[1]))
-        {
             returnString.AppendLine($"\t\"{command[1]}\": {aboutCommands[command[1]]}");
-        }
+        else if (command.Length == 2 && aboutAdminCommands.ContainsKey(command[1]))
+            returnString.AppendLine($"\t\"{command[1]}\": {aboutAdminCommands[command[1]]}");
 
         return returnString.ToString();
     }
