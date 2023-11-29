@@ -46,13 +46,10 @@ namespace Server
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             };
 
-            University university = new();
-            university.professorsList = professorsList;
-
             using (Stream fileStream = File.Create(fileName))
             {
-                JsonSerializer.Serialize<University>(
-                    utf8Json: fileStream, value: university, options);
+                JsonSerializer.Serialize(
+                    utf8Json: fileStream, value: professorsList, options);
             }
         }
 
@@ -66,8 +63,8 @@ namespace Server
 
             using (Stream fileStream = File.Open(fileName, FileMode.Open))
             {
-                University? university = JsonSerializer.Deserialize<University>(fileStream, options);
-                return university.professorsList;
+                List<Professor> professors = JsonSerializer.Deserialize<List<Professor>>(fileStream, options);
+                return professors;
             }
         }
     }

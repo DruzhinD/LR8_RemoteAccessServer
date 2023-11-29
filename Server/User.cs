@@ -11,11 +11,8 @@ namespace Server
         [JsonInclude]
         public string password;
 
-        public string root;
-        public int actualIdOfUser; //текущий id пользователя
-
-        [JsonIgnore]
-        public bool isInSystem = false;
+        [JsonInclude]
+        public string root = "user";
 
         public User() { }
 
@@ -23,6 +20,13 @@ namespace Server
         {
             this.login = login;
             this.password = password;
+        }
+
+        public User(User user)
+        {
+            this.login = user.login;
+            this.password = user.password;
+            this.root = user.root;
         }
 
         /// <summary>Десериализация из json-документа</summary>

@@ -1,6 +1,7 @@
 [
   {
     "login": "Dimon",
-    "password": "12345"
+    "password": "12345",
+    "root":  "user"
   }
 ]

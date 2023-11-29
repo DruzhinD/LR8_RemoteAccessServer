@@ -19,16 +19,16 @@ internal class Interpretator
     //список пользователей
     private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
 
+    public KeyValuePair<User?, bool> actualUser = new(new User("1", "2"), false);
+
     public string Execute(string messageFromClient)
     {
         string[] command = messageFromClient.Split('|', '_');
         command[0] = command[0].ToLower(); //форматирование ввода в нижнем регистре
 
-        //бесконечная аутентификация
-        //РЕШЕНИЕ: передавать в метод id клиента users[индекс user'а с указанным id]
-        if (users != null)
+        if (actualUser.Value == false)
         {
-            if (command[0] == "login")
+            if (users != null & command[0] == "login")
             {
                 bool result = Autentification(command);
                 if (result == true)
@@ -91,37 +91,32 @@ internal class Interpretator
     {
         { "help", "получить справку по командам" },
         { "addprof",
-            "Добавить нового преподавателя. \n (аргументы: Ф_И_О_дисциплина " +
-            "ИЛИ Ф_И_О_дисциплина_дата трудоустройства)" },
-
+            "Добавить нового преподавателя. \n " +
+            "Параметры ввода: addprof_[Ф]_[И]_[О]_[Дисциплина] ИЛИ addprof_[Ф]_[И]_[О]_[Дисциплина]_[Дата трудоустройства]" },
         { "exit", "Завершить работу программы" },
-        { "list", "Вывести список преподавателей. \n (аргументы: id ИЛИ id_'period')" },
-        { "del",  "удалить информацию о преподавателе (аргументы: id)"},
+        { "list", "Вывести список преподавателей. " +
+            "Параметры ввода: list_[id] ИЛИ list_[id]_{period}" },
+        { "del",  "удалить информацию о преподавателе" +
+            "Параметры ввода: del_[id]" },
         { "ser", "Сериализовать определенное количество преподавателей \n" +
-            "с удалением их из памяти (списка в программе) с использованием json"},
-        {"deser", "десериализовать информацию о преподавателях" }
-    };
-
-    private static string[] aboutSerArgs =
-    {
-        "аргументы: 1) индекс преподавателя_количество преподавателей",
-        "2) индекс преподавателя_количество преподавателей_'save'",
-        "для сохранения сериализованной части списка в списке преподавателей"
+            "Параметры ввода: ser_[id преподавателя]_[кол-во преподавателей]"},
+        {"deser", "десериализовать информацию о преподавателях" },
+        {"adduser", "Добавить нового пользователя \n" +
+            "Параметры ввода: addprof_[логин]_[пароль]_[права доступа (user/admin)]" }
     };
 
     #endregion
 
     #region Методы обработки команд
     //аутентификация
-    private static bool Autentification(string[] command)
+    private bool Autentification(string[] command)
     {
         foreach (User user in users)
         {
             //возврат true в случае совпадения логина и пароля
             if (command[1] == user.login && command[2] == user.password)
             {
-                //указываем, что пользователь находится в системе
-                user.isInSystem = true;
+                actualUser = new(user, true);
                 return true;
             }
         }
@@ -170,15 +165,6 @@ internal class Interpretator
         else if (command.Length == 2 && aboutCommands.ContainsKey(command[1]))
         {
             returnString.AppendLine($"\t\"{command[1]}\": {aboutCommands[command[1]]}");
-            if (command[1] == "ser")
-            {
-                foreach (string arg in aboutSerArgs)
-                    returnString.AppendLine($"\t {arg}");
-            }
-            else
-            {
-                returnString.AppendLine($"Нет информации о команде");
-            }
         }
 
         return returnString.ToString();
@@ -352,12 +338,6 @@ internal class Interpretator
                 Path.Combine(path, "university.json"), professors.GetRange(profListIndex, amount));
         }
 
-        //возможно следует УДАЛИТЬ
-
-        //проверка на наличие в команде слова save
-        //при отсутствии - удаление сериализованных элементов
-        if (command.Length == 4 && command[3].ToLower() != "save")
-            professors.RemoveRange(profListIndex, amount);
         return "Информация успешно сериализована.";
     }
 
