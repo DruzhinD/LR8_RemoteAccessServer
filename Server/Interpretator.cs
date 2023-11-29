@@ -7,9 +7,6 @@ namespace Server;
 //класс, который будет обрабатывать пользовательские команды и возвращать результат
 internal class Interpretator
 {
-    //возвращаемая строка
-    public StringBuilder answer = new StringBuilder();
-
     //путь к директории файлов для сериализации
     private static string path = Path.GetFullPath(Directory.GetCurrentDirectory() + @"\..\..\..\");
 
@@ -19,6 +16,9 @@ internal class Interpretator
     //список пользователей
     private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
 
+    /// <summary>
+    /// bool значение: false - пользователь НЕ авторизован, true - пользователь авторизован
+    /// </summary>
     public KeyValuePair<User?, bool> actualUser = new(null, false);
 
     public string Execute(string messageFromClient)
@@ -26,9 +26,9 @@ internal class Interpretator
         string[] command = messageFromClient.Split('|', '_');
         command[0] = command[0].ToLower(); //форматирование ввода в нижнем регистре
 
-        if (actualUser.Value == false)
+        if (users != null & actualUser.Value == false)
         {
-            if (users != null & command[0] == "login")
+            if (command[0] == "login")
             {
                 bool result = Autentification(command);
                 if (result == true)
@@ -44,7 +44,7 @@ internal class Interpretator
             }
         }
 
-        string answer = string.Empty;
+        string answer;
         if (actualUser.Key.root == "admin")
         {
             answer = command[0] switch
@@ -73,7 +73,7 @@ internal class Interpretator
                 _ => "Неизвестная команда. Повторите ввод. help - вызов справки.",
             };
         }
-        return answer.ToString();
+        return answer;
     }
 
     #region поля, необходимые для работы справочника по командам, вызывается через help
@@ -101,7 +101,6 @@ internal class Interpretator
 
     #endregion
 
-    #region Методы обработки команд
     //аутентификация
     private bool Autentification(string[] command)
     {
@@ -136,6 +135,8 @@ internal class Interpretator
         //выводим ответ клиенту
         return $"Новый пользователь с логином: {command[1]} и паролем {command[2]} успешно добавлен!";
     }
+
+    #region Методы обработки команд
 
     //Вывод доступных команд
     private string Help(string[] command)
