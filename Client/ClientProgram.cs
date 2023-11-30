@@ -9,9 +9,10 @@ namespace Client
         static void Main(string[] args)
         {
             int port = 2023;
-            Console.Write("Введите IP-адрес сервера: ");
-            Console.ReadLine();
-            string address = "127.0.0.1";
+            Console.Write("Введите IP-адрес сервера (или нажмите Enter для подстановки 127.0.0.1): ");
+            string address = Console.ReadLine();
+            if (string.IsNullOrEmpty(address))
+                address = "127.0.0.1";
             try
             {
                 IPEndPoint ipPoint = new(IPAddress.Parse(address), port);
