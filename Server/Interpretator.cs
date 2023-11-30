@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
+//Бэкап есть, надо реализовать возможность посмотреть содержимое бэкапов
 namespace Server;
 
 //класс, который будет обрабатывать пользовательские команды и возвращать результат
@@ -11,7 +12,7 @@ internal class Interpretator
     private static string path = Path.GetFullPath(Directory.GetCurrentDirectory() + @"\..\..\..\");
 
     //статическое поле для хранения информации, с которой работают все пользователи
-    private static List<Professor> professors = new List<Professor>();
+    private static List<Professor> professors = SerializeUniversity.DeserializeJson(Path.Combine(path, "university.json"));
 
     //список пользователей
     private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
@@ -57,6 +58,7 @@ internal class Interpretator
                 "deser" => Deserialization(command),
                 "adduser" => AddUser(command),
                 "exit" => "Выход из программы...",
+                "backup" => CheckBackUp(command),
                 _ => "Неизвестная команда. Повторите ввод. help - вызов справки.",
             };
 
@@ -92,11 +94,13 @@ internal class Interpretator
 
     private static Dictionary<string, string> aboutAdminCommands = new()
     {
-        { "ser", "Сериализовать определенное количество преподавателей \n" +
-            "Параметры ввода: ser_[id преподавателя]_[кол-во преподавателей]"},
+        { "ser", "Сериализовать определенное количество преподавателей \n" },
         {"deser", "десериализовать информацию о преподавателях" },
         {"adduser", "Добавить нового пользователя \n" +
-            "Параметры ввода: addprof_[логин]_[пароль]_[права доступа (user/admin)]" }
+            "Параметры ввода: addprof_[логин]_[пароль]_[права доступа (user/admin)]" },
+        {"backup", "Просмотреть резервную копию или заменить текущее состояние БД резервной копией\n" +
+            "Параметры ввода: backup_{check}_[номер резервной копии (0-2)] - просмотреть резервную копию ИЛИ\n" +
+            "backup_{load}_[номер резервной копии] - загрузить резеврную копию" }
     };
 
     #endregion
@@ -125,10 +129,14 @@ internal class Interpretator
             return $"Количество аргументов отличается от ожидаемого: " +
                 $"введено - {command.Length}, ожидалось - 4";
         }
-
+        else if (command[3] != "admin" | command[3] != "user")
+        {
+            return "Неверно указаны права пользователя.";
+        }
         //инициализируем список пользователей если он пуст
         if (users == null)
-            users = new();
+                users = new();
+        
         //добавляем нового пользователя сначала в поле программы, а затем сериализуем все поле целиком
         users.Add(new User(command[1], command[2], command[3]));
         User.SerializeJson(Path.Combine(path, "userslist.json"), users);
@@ -136,7 +144,45 @@ internal class Interpretator
         return $"Новый пользователь с логином: {command[1]} и паролем {command[2]} успешно добавлен!";
     }
 
-    #region Методы обработки команд
+    public string CheckBackUp(string[] command)
+    {
+        int fileId;
+        if (command.Length != 3)
+        {
+            return $"Количество аргументов отличается от ожидаемого: " +
+                $"введено - {command.Length}, ожидалось - 4";
+        }
+        else if (!int.TryParse(command[2], out fileId))
+        {
+            return "Последний аргумент должен быть числом от 0 до 2";
+        }
+        else if (command[1] == "check")
+        {
+            //загружаем состояние программы во временной хранилище
+            List<Professor> tempList = new(SerializeUniversity.DeserializeJson(
+                Path.Combine(path, $"backup\\{backupFiles[fileId]}")));
+            StringBuilder returnString = new();
+            returnString.AppendLine($"{"id",-3}|{"Фамилия",-15}|{"Имя",-15}|{"Отчество",-15}" +
+                $"|{"Дисциплина",-25}|{"Дата трудоустройства",-8}");
+            returnString.AppendLine(new string('-', 90));
+            foreach (Professor prof in tempList)
+                returnString.AppendLine(prof.ToString());
+            return returnString.ToString();
+        }
+        else if (command[1] == "load")
+        {
+            professors.Clear();
+            professors = SerializeUniversity.DeserializeJson(
+                Path.Combine(path, $"backup\\{backupFiles[fileId]}"));
+            return "Загрузка прошла успешно. Состояние БД изменено. list - показать список";
+        }
+        else
+        {
+            return $"ожидалось check/load, получено - {command[1]}";
+        }
+    }
+
+    #region Методы обработки команд, отличных от аутентификации и просмотра резервных копий
 
     //Вывод доступных команд
     private string Help(string[] command)
@@ -292,48 +338,8 @@ internal class Interpretator
     /// <param name="command">набор аргументов, см. help</param>
     private static string Serializing(string[] command)
     {
-        //индекс преподавателя
-        int idProf;
-        //количество преподавателей
-        int amount;
-
-        Regex indexesRegex = new(@"\d{1,3}");
-        MatchCollection indexMatches = indexesRegex.Matches(string.Join('_', command));
-        if (indexMatches.Count != 2)
-        {
-            return string.Format("Передано недостаточно или слишком много аргументов. Передано {0} из 2 необходимых.",
-                indexMatches.Count);
-        }
-        else
-        {
-            //индекс преподавателя
-            idProf = int.Parse(indexMatches[0].Value);
-            //количество преподавателей
-            amount = int.Parse(indexMatches[1].Value);
-        }
-
-        //проверка на существование преподавателя с таким id
-        Professor isProfExist = FindById(idProf);
-        if (isProfExist == null)
-        {
-            return $"Преподаватель с id = {idProf} не найден.";
-        }
-
-        //проверка (относительно конечного индекса) на существование введенного количества преподавателей
-        //находящихся после указанного, включая его самого
-        //если НЕверно, то НЕсериализуем
-        int profListIndex = professors.IndexOf(isProfExist);
-        if (profListIndex + amount - 1 > professors.Count - 1)
-        {
-            return $"Не удалось сериализовать {amount} преподавателей, следующих после {idProf}";
-        }
-        //иначе сериализуем
-        else
-        {
-            SerializeUniversity.SerializeJson(
-                Path.Combine(path, "university.json"), professors.GetRange(profListIndex, amount));
-        }
-
+        SerializeUniversity.SerializeJson(
+            Path.Combine(path, "university.json"), professors);
         return "Информация успешно сериализована.";
     }
 
@@ -341,23 +347,53 @@ internal class Interpretator
     /// метод десериализации json
     /// </summary>
     /// <param name="command">набор аргументов, см. help</param>
-    private static string Deserialization(string[] command)
+    private string Deserialization(string[] command)
     {
         List<Professor> newProfessors = new();
         if (command.Length == 1)
             newProfessors = SerializeUniversity.DeserializeJson(Path.Combine(path, "university.json"));
         else
-            return "Неверно указан или отсутствует сериализатор.";
+            return "Введено слишком много аргументов.";
 
         if (newProfessors != null)
         {
-            professors.AddRange(newProfessors);
-            return "Десериализация прошла успешно.";
+            //при десереализации создаем резервную копию списка, очищаем его и заполняем его содержимым основного файла 
+
+            //создаем резевную копию БД, а также сохраняем в переменную индекс файла, в который она была сохранена
+            int index = CreateBackup(professors);
+            professors.Clear();
+            professors = new(newProfessors);
+            return $"Десериализация прошла успешно. " +
+                $"Предыдущее состояние программы сохранено в файле резервного копирования {backupFiles[index]}.";
         }
         else
         {
             return "Объекты для десериализации отсутствуют.";
         }
+    }
+
+    private static int currectBackup = 0;
+    string[] backupFiles = { "backup0.json", "backup1.json", "backup2.json" };
+    private int CreateBackup(List<Professor> professors)
+    {
+        //сохраняем индекс файла, в которых будет загружена резервная копия
+        int backUpedIndex = currectBackup;
+        switch (currectBackup)
+        {
+            case 0:
+                SerializeUniversity.SerializeJson(Path.Combine(path, $"backup\\{backupFiles[0]}"), professors);
+                currectBackup = 1;
+                break;
+            case 1:
+                SerializeUniversity.SerializeJson(Path.Combine(path, $"backup\\{backupFiles[1]}"), professors);
+                currectBackup = 2;
+                break;
+            case 2:
+                SerializeUniversity.SerializeJson(Path.Combine(path, $"backup\\{backupFiles[2]}"), professors);
+                currectBackup = 0;
+                break;
+        }
+        return backUpedIndex;
     }
     #endregion
 }

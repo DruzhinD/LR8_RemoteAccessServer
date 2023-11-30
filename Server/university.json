@@ -22,5 +22,29 @@
     "secondName": "Петрович",
     "subject": "Высшая математика",
     "employment": "2005-04-12T00:00:00"
+  },
+  {
+    "id": 3,
+    "lastName": "Долговец",
+    "firstName": "Мария",
+    "secondName": "Олеговна",
+    "subject": "Квантовая Механика",
+    "employment": "2013-11-30T00:00:00"
+  },
+  {
+    "id": 4,
+    "lastName": "Авдов",
+    "firstName": "Никита",
+    "secondName": "Игоревич",
+    "subject": "Сопромат",
+    "employment": "2023-11-30T15:00:49.8419794+10:00"
+  },
+  {
+    "id": 5,
+    "lastName": "Андреев",
+    "firstName": "Николай",
+    "secondName": "Алексеевич",
+    "subject": "СУБД",
+    "employment": "2023-11-30T15:02:30.0508664+10:00"
   }
 ]
