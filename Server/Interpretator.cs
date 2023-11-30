@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-//Бэкап есть, надо реализовать возможность посмотреть содержимое бэкапов
 namespace Server;
 
 //класс, который будет обрабатывать пользовательские команды и возвращать результат
@@ -58,7 +57,7 @@ internal class Interpretator
                 "deser" => Deserialization(command),
                 "adduser" => AddUser(command),
                 "exit" => "Выход из программы...",
-                "backup" => CheckBackUp(command),
+                "backup" => CheckOrLoadBackUp(command),
                 _ => "Неизвестная команда. Повторите ввод. help - вызов справки.",
             };
 
@@ -144,7 +143,7 @@ internal class Interpretator
         return $"Новый пользователь с логином: {command[1]} и паролем {command[2]} успешно добавлен!";
     }
 
-    public string CheckBackUp(string[] command)
+    public string CheckOrLoadBackUp(string[] command)
     {
         int fileId;
         if (command.Length != 3)
