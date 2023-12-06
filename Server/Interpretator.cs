@@ -149,11 +149,15 @@ internal class Interpretator
         if (command.Length != 3)
         {
             return $"Количество аргументов отличается от ожидаемого: " +
-                $"введено - {command.Length}, ожидалось - 4";
+                $"введено - {command.Length}, ожидалось - 3";
         }
         else if (!int.TryParse(command[2], out fileId))
         {
             return "Последний аргумент должен быть числом от 0 до 2";
+        }
+        else if (!(0 <= fileId && fileId <= 2))
+        {
+            return $"Не существует файла резевного копирования с id = {fileId}";
         }
         else if (command[1] == "check")
         {
