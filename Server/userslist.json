@@ -8,5 +8,15 @@
     "login": "admin",
     "password": "admin",
     "root": "admin"
+  },
+  {
+    "login": "user",
+    "password": "user",
+    "root": "user"
+  },
+  {
+    "login": "anton",
+    "password": "1111",
+    "root": "user"
   }
 ]

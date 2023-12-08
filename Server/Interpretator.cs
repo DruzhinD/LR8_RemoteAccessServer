@@ -17,7 +17,8 @@ internal class Interpretator
     private static List<User> users = User.DeserializeJson(Path.Combine(path, "userslist.json"));
 
     /// <summary>
-    /// bool значение: false - пользователь НЕ авторизован, true - пользователь авторизован
+    /// ключ (User) - пользователь, под котором авторизовался клиент <br/>
+    /// Значение (bool) - false - пользователь не авторизован, true - пользователь авторизован
     /// </summary>
     public KeyValuePair<User?, bool> actualUser = new(null, false);
 
@@ -128,7 +129,7 @@ internal class Interpretator
             return $"Количество аргументов отличается от ожидаемого: " +
                 $"введено - {command.Length}, ожидалось - 4";
         }
-        else if (command[3] != "admin" | command[3] != "user")
+        else if (command[3] != "admin" & command[3] != "user")
         {
             return "Неверно указаны права пользователя.";
         }
